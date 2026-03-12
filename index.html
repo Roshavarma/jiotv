@@ -7,6 +7,7 @@
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
@@ -30,15 +31,15 @@
         
         .channel-btn {
             transition: all 0.2s ease-in-out;
-            border: 2px solid transparent; /* Slightly thicker for TV focus */
+            border: 2px solid transparent; 
             user-select: none;
-            outline: none; /* Remove default browser outline */
+            outline: none; 
         }
         
-        /* TV Remote Focus State (Crucial for Smart TVs) */
+        /* TV Remote Focus State */
         .channel-btn:focus, .channel-btn:hover {
             background: rgba(59, 130, 246, 0.2);
-            border-color: #3b82f6; /* Bright blue border when selected with TV remote */
+            border-color: #3b82f6; 
             transform: scale(0.98);
         }
 
@@ -59,7 +60,6 @@
         @keyframes spin { 100% { transform: rotate(360deg); } }
     </style>
 </head>
-<!-- Added tabindex="0" so the body can hold remote control focus -->
 <body class="h-screen w-full flex flex-col md:flex-row" tabindex="0" id="main-body">
 
     <!-- Left Side: Video Player Area -->
@@ -76,7 +76,6 @@
         
         <!-- Iframe Container -->
         <div class="flex-1 relative w-full h-full bg-black flex items-center justify-center group" id="video-container">
-            <!-- Added allow="autoplay" and specific sandbox attributes to help with TV browsers -->
             <iframe id="videoPlayer" src="" class="w-full h-full border-0" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>
             
             <button onclick="toggleFullScreen()" class="absolute top-4 right-4 z-30 pointer-events-auto bg-black/70 hover:bg-blue-600 text-white w-12 h-12 rounded-lg backdrop-blur border border-white/20 shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all focus:opacity-100 focus:bg-blue-600 outline-none" title="Full Screen" tabindex="0">
@@ -97,7 +96,7 @@
             </div>
             <!-- TV Remote Hint -->
             <div class="hidden md:flex flex-col items-end text-[10px] text-slate-500 font-mono">
-                <span><i class="fas fa-arrows-alt-v mr-1"></i> CH +/- to switch</span>
+                <span><i class="fas fa-arrows-alt-v mr-1"></i> CH +/- (PageUp/Dn) to switch</span>
                 <span><i class="fas fa-hand-pointer mr-1"></i> Press OK x2 for Fullscreen</span>
             </div>
         </div>
@@ -193,7 +192,6 @@
                 }
                 
                 document.getElementById('video-loader').classList.add('hidden');
-                // Give focus to the app so the remote works immediately
                 document.getElementById('main-body').focus();
                 
             } catch (error) {
@@ -212,7 +210,7 @@
                 const btn = document.createElement('button');
                 btn.className = `channel-btn w-full text-left p-2.5 rounded-xl bg-slate-800/60 flex items-center gap-3`;
                 btn.id = `ch-${channel.channel_id}`;
-                btn.tabIndex = 0; // Makes it focusable by TV remote
+                btn.tabIndex = 0; 
                 
                 let badgeHTML = '';
                 if(channel.is_spt && channel.is_mal) badgeHTML = `<span class="bg-purple-900/80 text-purple-300 text-[10px] px-2 py-0.5 rounded border border-purple-700/50">Mal Sports</span>`;
@@ -235,7 +233,6 @@
                 // SMART TV DOUBLE TAP LOGIC
                 let clickTimer = null;
                 btn.onclick = (e) => {
-                    // Force focus back to our app away from iframe
                     document.getElementById('main-body').focus(); 
                     
                     if (clickTimer == null) {
@@ -243,7 +240,7 @@
                         playChannel(channel);
                         clickTimer = setTimeout(() => {
                             clickTimer = null;
-                        }, 500); // 500ms window for second tap
+                        }, 500); 
                     } else {
                         // Second Tap within 500ms: Fullscreen
                         clearTimeout(clickTimer);
@@ -311,40 +308,46 @@
             }
         }
 
-        // AGGRESSIVE REMOTE CONTROL LISTENER
-        // We attach to window, document, and main-body to catch TV remote signals
+        // ==========================================
+        // AGGRESSIVE TV REMOTE INTERCEPTOR
+        // ==========================================
         function handleRemoteKeys(e) {
-            // Ignore if typing in search box
+            // Ignore if typing in the search box
             if(document.activeElement && document.activeElement.tagName === 'INPUT') return;
 
             const k = e.key;
             const c = e.keyCode;
 
-            // Channel UP codes: ArrowUp(38), PageUp(33), Vidaa Ch+(427), MediaNext(176)
-            if (k === 'ArrowUp' || k === 'PageUp' || k === 'ChannelUp' || c === 38 || c === 33 || c === 427 || c === 176) {
-                e.preventDefault();
+            // PAGE UP / CHANNEL UP
+            if (k === 'PageUp' || k === 'ArrowUp' || k === 'ChannelUp' || c === 33 || c === 38 || c === 427 || c === 176) {
+                e.preventDefault(); // Stop the TV from scrolling the page
+                e.stopPropagation(); // Stop the iframe from stealing the key
                 playNext();
             }
-            // Channel DOWN codes: ArrowDown(40), PageDown(34), Vidaa Ch-(428), MediaPrev(177)
-            else if (k === 'ArrowDown' || k === 'PageDown' || k === 'ChannelDown' || c === 40 || c === 34 || c === 428 || c === 177) {
-                e.preventDefault();
+            // PAGE DOWN / CHANNEL DOWN
+            else if (k === 'PageDown' || k === 'ArrowDown' || k === 'ChannelDown' || c === 34 || c === 40 || c === 428 || c === 177) {
+                e.preventDefault(); 
+                e.stopPropagation();
                 playPrev();
             }
-            // Fullscreen toggle: 'f' or F11
-            else if (k.toLowerCase() === 'f' || c === 122) {
+            // FULLSCREEN TOGGLE (F key or F11)
+            else if ((k && k.toLowerCase() === 'f') || c === 122) {
                 e.preventDefault();
                 toggleFullScreen();
             }
         }
 
-        window.addEventListener('keydown', handleRemoteKeys, true); // Use capture phase
+        // Use capture phase (true) to intercept the remote signal at the absolute top level
+        window.addEventListener('keydown', handleRemoteKeys, true); 
 
-        // Prevent iframe from permanently stealing focus when you click it
-        window.addEventListener('blur', () => {
-            setTimeout(() => {
+        // Aggressively steal focus back from the video player every 3 seconds
+        // so the TV remote doesn't get permanently stuck inside the iframe
+        setInterval(() => {
+            if (document.activeElement && document.activeElement.tagName === 'IFRAME') {
+                window.focus();
                 document.getElementById('main-body').focus();
-            }, 100);
-        });
+            }
+        }, 3000);
 
         function applyFilters() {
             const searchTerm = document.getElementById('search').value.toLowerCase();
@@ -370,5 +373,4 @@
     </script>
 </body>
 </html>
-
 
